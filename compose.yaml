@@ -1,0 +1,47 @@
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vertexlearn
+      POSTGRES_USER: vertexlearn
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - vertexlearn-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vertexlearn -d vertexlearn"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://vertexlearn:${POSTGRES_PASSWORD}@database:5432/vertexlearn
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      AI_API_BASE_URL: ${AI_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
+      AI_MODEL: ${AI_MODEL:-gemini-2.5-flash}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      FRONTEND_BASE_URL: http://localhost:5173
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_PROXY_TARGET: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+
+volumes:
+  vertexlearn-postgres:
+

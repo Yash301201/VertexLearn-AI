@@ -7,7 +7,7 @@ export default defineConfig({
 		proxy: Object.fromEntries(
 			['/auth', '/courses', '/enrollments', '/assessments', '/attempts', '/users', '/ai'].map((path) => [
 				path,
-				'http://127.0.0.1:8000',
+				process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:8000',
 			]),
 		),
 	},

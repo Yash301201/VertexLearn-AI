@@ -7,3 +7,4 @@ from app.models.lesson_completion import LessonCompletion
 from app.models.assessment_question import AssessmentQuestion
 from app.models.assessment_attempt import AssessmentAttempt
 from app.models.assessment_answer import AssessmentAnswer
+from app.models.study_plan import StudyPlan, StudyPlanAudit

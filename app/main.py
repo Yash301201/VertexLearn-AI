@@ -14,6 +14,7 @@ from app.models import (
     enrollment,
     lesson,
     lesson_completion,
+    study_plan,
     user,
 )
 

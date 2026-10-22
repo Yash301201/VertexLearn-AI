@@ -51,6 +51,8 @@ without leaving the learning platform.
 - **Structured Lessons:** Access course content organised into lessons.
 - **Assessments:** Access available assessments to evaluate learning.
 - **AI Study Assistant:** Ask questions about technical concepts.
+- **Agentic Student Success Workflow:** LangGraph routes course questions to grounded Q&A or progress-aware study-plan generation.
+- **Human-in-the-Loop Review:** Learners approve or reject saved study-plan drafts; decisions are audit logged.
 - **Course-Context Retrieval:** Identify potentially relevant lesson
   content using keyword matching.
 - **AI-Generated Explanations:** Use the Gemini API to generate
@@ -97,6 +99,7 @@ See the Future Improvements section for known limitations.
 |---|---|
 | Google Gemini API | Generates AI-assisted explanations. |
 | Python retrieval logic | Searches lesson titles and content using keyword matching. |
+| LangGraph | Routes learner requests through a bounded, request-scoped workflow. |
 | Prompt engineering | Supplies instructions, the student's question, and course context to the AI model. |
 | Retrieval-Augmented Generation (RAG) approach | Supplies retrieved course information as context for answer generation. |
 
@@ -185,6 +188,30 @@ than training a new large language model.
 
 ---
 
+## Agentic Student Success Workflow
+
+VertexLearn adds a bounded LangGraph workflow at `POST /ai/agent`. It routes a learner request to one of two paths:
+
+1. **Course question:** Reuse the existing lesson retrieval and Gemini-backed answer service. The response includes lesson sources.
+2. **Study-plan request:** Run a fixed, parameterized PostgreSQL query scoped to the authenticated learner and selected course. CTEs and a `ROW_NUMBER()` window function calculate completion and select up to three next incomplete lessons.
+3. **Human review:** Save the recommendation as a pending plan. The learner can approve or reject it through owner-scoped REST endpoints. A separate audit table records drafting and review decisions.
+
+The model does not generate SQL and the plan workflow does not perform external actions. Plan state changes happen only through the authenticated approval or rejection endpoint. Existing `POST /ai/study` remains available.
+
+### Agent API
+
+- `POST /ai/agent` — accepts the same `course_id` and `question` fields as the study endpoint; returns the intent, answer, source lessons, progress summary, and an optional pending plan.
+- `POST /ai/plans/{plan_id}/approve` — approves the current learner's pending plan.
+- `POST /ai/plans/{plan_id}/reject` — rejects the current learner's pending plan.
+
+### Resume-ready project description
+
+> Extended VertexLearn AI with a LangGraph-powered student-success workflow using Python, FastAPI REST APIs, React, PostgreSQL, and Docker Compose. Routed course questions to lesson-grounded Gemini RAG and generated learner-scoped study-plan drafts using CTEs, joins, aggregates, and window functions; persisted approval decisions with an audit trail.
+
+Use the bullet only after you have run the project and can explain each step. Do not add performance or accuracy numbers unless you measured them.
+
+---
+
 ## 7. Project Folder Structure
 
 The project is stored locally at:
@@ -200,6 +227,7 @@ The main project structure is:
 ```text
 VertexLearn-AI/
 ├── app/
+│   ├── agents/
 │   ├── database/
 │   ├── models/
 │   ├── routers/
@@ -212,6 +240,8 @@ VertexLearn-AI/
 │   └── ...
 ├── tests/
 ├── requirements.txt
+├── Dockerfile
+├── compose.yaml
 ├── .env.example
 ├── .gitignore
 └── README.md
@@ -232,6 +262,16 @@ Install the following software:
 - Node.js and npm.
 - PostgreSQL.
 - Git.
+
+### Docker Compose Quick Start
+
+Copy `.env.example` to `.env`, then add a local `POSTGRES_PASSWORD` value and set `JWT_SECRET_KEY` to a unique value. Keep both values out of Git. For AI answers, also set `GEMINI_API_KEY`. Choose an alphanumeric PostgreSQL password for this local Compose configuration.
+
+```bash
+docker compose up --build
+```
+
+Open the React frontend at http://localhost:5173 and the FastAPI documentation at http://localhost:8000/docs. This Compose setup is for local development; it runs PostgreSQL, the API, and the Vite development server. Stop it with `docker compose down`; add `-v` only when you also want to delete the local database volume.
 
 The versions listed above should be checked against the versions
 used during development.
@@ -377,8 +417,7 @@ the corresponding functionality.
 - External AI service failures may interrupt requests.
 - Keyword-based retrieval may miss relevant lessons when the
   student's wording differs from the course content.
-- Personalised recommendations and detailed learning analytics
-  remain areas for future development.
+- Study-plan suggestions currently select up to three next incomplete lessons; more advanced personalization and learning analytics remain future work.
 
 The current feature set and limitations should be updated as
 development progresses.
@@ -390,7 +429,7 @@ development progresses.
 - Improve AI response reliability and error handling.
 - Evaluate embedding-based semantic retrieval.
 - Improve relevance and quality of retrieved lesson content.
-- Introduce personalised course recommendations.
+- Evaluate study-plan relevance with a documented learner scenario set.
 - Add student performance analytics and learning progress reports.
 - Expand automated tests for API and AI functionality.
 - Improve security, configuration validation, and deployment.
